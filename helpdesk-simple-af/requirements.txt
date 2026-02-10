@@ -1,0 +1,34 @@
+# Web Framework
+fastapi==0.115.0
+uvicorn
+dotenv
+azure-core==1.30.0
+
+# Core Dependencies
+python-dotenv==1.0.0
+pydantic==2.9.0
+
+# Azure Identity and Authentication
+azure-identity==1.19.0
+
+# Azure AI Services
+openai==1.84.0
+azure-search-documents==11.6.0
+azure-devops==7.1.0
+
+# Azure AI Agent Framework
+azure-ai-agents
+azure-ai-projects
+azure-ai-inference==1.0.0b9
+msrest==0.7.1
+openai
+
+# Agent Framework
+agent-framework==1.0.0,
+agent-framework-azure-ai==1.0.0
+
+# Additional Dependencies
+aiohttp
+azure-cli
+
+
