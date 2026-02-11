@@ -5,17 +5,24 @@ from agents.rag_agent import RAGAgent
 from agents.ticket_agent import TicketAgent
 from agents.status_agent import StatusAgent
 from services.safety_service import SafetyService
+from services.session_store import SessionStore
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
-    """Orchestrates RAG, Ticket, and Status agents based on user intent."""
+    """Orchestrates RAG, Ticket, and Status agents based on user intent.
+
+    Uses SessionStore for in-session memory: when a session_id is provided,
+    the orchestrator reuses existing OpenAI threads so the agent has full
+    conversation context for follow-up messages.
+    """
 
     def __init__(self):
         self.intent_classifier = IntentClassifier()
         self.safety = SafetyService()
+        self.session_store = SessionStore()
         self._rag_agent: Optional[RAGAgent] = None
         self._ticket_agent: Optional[TicketAgent] = None
         self._status_agent: Optional[StatusAgent] = None
@@ -63,12 +70,23 @@ class Orchestrator:
         self.logger.info("Orchestrator cleanup complete")
 
     async def process(
-        self, message: str, thread_id: Optional[str] = None
+        self,
+        message: str,
+        session_id: Optional[str] = None,
+        thread_id: Optional[str] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """Process user message and route to appropriate agent.
 
+        Args:
+            message: User message text.
+            session_id: Optional session identifier. When provided, the
+                orchestrator remembers thread_ids across multiple calls
+                in the same session, enabling multi-turn conversations.
+            thread_id: Optional explicit thread_id override (legacy).
+                If session_id is also provided, session_id takes precedence.
+
         Yields:
-            Response updates from the agent
+            Response updates from the agent.
         """
         if not self._rag_agent or not self._ticket_agent or not self._status_agent:
             await self.initialize()
@@ -93,23 +111,42 @@ class Orchestrator:
         intent = await self.intent_classifier.classify(message)
         self.logger.info(f"Processing message with intent: {intent}")
 
+        # Look up existing thread from session store (if session_id provided)
+        if session_id and not thread_id:
+            thread_id = self.session_store.get_thread(session_id, intent)
+            if thread_id:
+                self.logger.info(
+                    f"Reusing thread {thread_id} for session {session_id}:{intent}"
+                )
+
         try:
             if intent == "rag":
                 self.logger.info("Routing to RAG agent")
                 async for update in self._rag_agent.invoke(message, thread_id):
                     update["intent"] = "rag"
+                    # Persist thread_id in session store for follow-ups
+                    if session_id and update.get("type") == "final" and update.get("thread_id"):
+                        self.session_store.set_thread(session_id, "rag", update["thread_id"])
+                    if session_id:
+                        update["session_id"] = session_id
                     yield update
 
             elif intent == "ticket":
                 self.logger.info("Routing to Ticket agent")
                 async for update in self._ticket_agent.invoke(message, thread_id):
                     update["intent"] = "ticket"
+                    if session_id and update.get("type") == "final" and update.get("thread_id"):
+                        self.session_store.set_thread(session_id, "ticket", update["thread_id"])
+                    if session_id:
+                        update["session_id"] = session_id
                     yield update
 
             elif intent == "status":
                 self.logger.info("Routing to Status agent")
                 async for update in self._status_agent.invoke(message, thread_id):
                     update["intent"] = "status"
+                    if session_id:
+                        update["session_id"] = session_id
                     yield update
 
         except Exception as ex:

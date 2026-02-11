@@ -75,11 +75,16 @@ async def query(request: QueryRequest):
         sources = []
         ticket_id = None
         ticket_url = None
+        session_id = request.session_id
         thread_id = request.thread_id
         fallback = False
         suggest_ticket = False
 
-        async for update in orch.process(request.message, request.thread_id):
+        async for update in orch.process(
+            request.message,
+            session_id=request.session_id,
+            thread_id=request.thread_id,
+        ):
             # Track intent
             if "intent" in update:
                 intent = update["intent"]
@@ -95,6 +100,7 @@ async def query(request: QueryRequest):
                 ticket_id = update.get("ticket_id")
                 ticket_url = update.get("ticket_url")
                 thread_id = update.get("thread_id", thread_id)
+                session_id = update.get("session_id", session_id)
                 fallback = update.get("fallback", False)
 
                 # Suggest ticket if RAG fallback
@@ -111,6 +117,7 @@ async def query(request: QueryRequest):
             sources=sources if sources else None,
             ticket_id=ticket_id,
             ticket_url=ticket_url,
+            session_id=session_id,
             thread_id=thread_id,
             fallback=fallback,
             suggest_ticket=suggest_ticket,
@@ -140,7 +147,11 @@ async def query_stream(request: QueryRequest):
         try:
             orch = await get_orchestrator()
 
-            async for update in orch.process(request.message, request.thread_id):
+            async for update in orch.process(
+                request.message,
+                session_id=request.session_id,
+                thread_id=request.thread_id,
+            ):
                 # Send each update as SSE event
                 event_data = json.dumps(update)
                 yield f"data: {event_data}\n\n"

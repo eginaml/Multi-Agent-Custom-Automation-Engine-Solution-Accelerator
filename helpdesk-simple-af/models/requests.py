@@ -12,9 +12,15 @@ class QueryRequest(BaseModel):
         description="User message to process",
         examples=["How do I reset my password?"],
     )
+    session_id: Optional[str] = Field(
+        None,
+        description="Session identifier for multi-turn conversations. "
+        "When provided, the orchestrator remembers thread context across messages.",
+        examples=["sess-a1b2c3"],
+    )
     thread_id: Optional[str] = Field(
         None,
-        description="Conversation thread ID for multi-turn conversations",
+        description="Explicit thread ID override (legacy). session_id is preferred.",
         examples=["thread_abc123"],
     )
 

@@ -21,6 +21,9 @@ class QueryResponse(BaseModel):
     suggest_ticket: bool = Field(
         False, description="Whether to suggest creating a support ticket"
     )
+    session_id: Optional[str] = Field(
+        None, description="Session identifier for multi-turn conversations"
+    )
     thread_id: Optional[str] = Field(
         None, description="Conversation thread ID for multi-turn conversations"
     )
