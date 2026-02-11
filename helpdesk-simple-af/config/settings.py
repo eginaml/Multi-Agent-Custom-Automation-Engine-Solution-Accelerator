@@ -69,6 +69,16 @@ class Settings:
     ENABLE_CONVERSATION_THREADING = os.getenv("ENABLE_CONVERSATION_THREADING", "true").lower() == "true"
 
     # ============================================
+    # Azure Content Safety Configuration
+    # ============================================
+    # Create resource: portal.azure.com → AI Services → Content Safety
+    # Endpoint format: https://<resource-name>.cognitiveservices.azure.com/
+    CONTENT_SAFETY_ENDPOINT = os.getenv("AZURE_CONTENT_SAFETY_ENDPOINT")
+    CONTENT_SAFETY_KEY = os.getenv("AZURE_CONTENT_SAFETY_KEY")
+    # Severity threshold: 0=safe, 2=low, 4=medium, 6=high. Block at 4 (medium) or above.
+    CONTENT_SAFETY_THRESHOLD = int(os.getenv("AZURE_CONTENT_SAFETY_THRESHOLD", "4"))
+
+    # ============================================
     # API Server Configuration
     # ============================================
     API_HOST = os.getenv("API_HOST", "0.0.0.0")

@@ -15,6 +15,7 @@ azure-identity==1.19.0
 openai==1.84.0
 azure-search-documents==11.6.0
 azure-devops==7.1.0
+azure-ai-contentsafety==1.0.0
 
 # Azure AI Agent Framework
 azure-ai-agents

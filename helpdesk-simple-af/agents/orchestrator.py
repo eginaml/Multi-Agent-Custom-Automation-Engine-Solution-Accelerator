@@ -4,6 +4,7 @@ from agents.intent_classifier import IntentClassifier
 from agents.rag_agent import RAGAgent
 from agents.ticket_agent import TicketAgent
 from agents.status_agent import StatusAgent
+from services.safety_service import SafetyService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ class Orchestrator:
 
     def __init__(self):
         self.intent_classifier = IntentClassifier()
+        self.safety = SafetyService()
         self._rag_agent: Optional[RAGAgent] = None
         self._ticket_agent: Optional[TicketAgent] = None
         self._status_agent: Optional[StatusAgent] = None
@@ -70,6 +72,23 @@ class Orchestrator:
         """
         if not self._rag_agent or not self._ticket_agent or not self._status_agent:
             await self.initialize()
+
+        # Screen for harmful content before routing to any agent
+        safety_result = self.safety.check(message)
+        if not safety_result.is_safe:
+            self.logger.warning(
+                f"Message blocked by content safety: {safety_result.blocked_categories}"
+            )
+            yield {
+                "type": "blocked",
+                "intent": "unknown",
+                "message": (
+                    "I'm sorry, I can't process that request as it contains content "
+                    "that violates our usage policy."
+                ),
+                "blocked_categories": safety_result.blocked_categories,
+            }
+            return
 
         intent = await self.intent_classifier.classify(message)
         self.logger.info(f"Processing message with intent: {intent}")
